@@ -1,0 +1,36 @@
+{
+  "buckets": {
+    "swim": ["lap_swimming", "open_swim", "water_walking", "water_fitness"],
+    "gym": ["strength", "cardio", "mind_body", "hiit"],
+    "sports": ["sports"],
+    "kids": ["kids_club"],
+    "run": ["hiit", "cardio"]
+  },
+  "classes": [
+    {"id":"hiit","name":"HIIT","bucket":"gym","tags":["hiit","cardio"],"default_location":"Group Exercise Studio","default_duration_min":50},
+    {"id":"water_walking","name":"Water Walking","bucket":"swim","tags":["water_walking","cardio"],"default_location":"Indoor Pool","default_duration_min":50},
+    {"id":"water_fitness_shallow","name":"Water Fitness: Shallow","bucket":"swim","tags":["water_fitness"],"default_location":"Indoor Pool","default_duration_min":60},
+    {"id":"lap_swim_sc","name":"Lap Swimming - Short Course","bucket":"swim","tags":["lap_swimming"],"default_location":"Indoor Pool - Main","default_duration_min":50},
+    {"id":"family_swim","name":"Family Swim","bucket":"swim","tags":["open_swim"],"default_location":"Indoor Pool - Main","default_duration_min":290},
+
+    {"id":"barre","name":"Barre","bucket":"gym","tags":["strength"],"default_location":"Group Exercise Studio","default_duration_min":60},
+    {"id":"mat_pilates","name":"Mat Pilates","bucket":"gym","tags":["strength","mind_body"],"default_location":"Group Exercise Studio","default_duration_min":45},
+    {"id":"yoga","name":"Yoga","bucket":"gym","tags":["mind_body"],"default_location":"Group Exercise Studio","default_duration_min":60},
+    {"id":"cardio_strength","name":"Cardio & Strength","bucket":"gym","tags":["strength","cardio"],"default_location":"Group Exercise Studio","default_duration_min":60},
+    {"id":"silver_sneakers","name":"Silver Sneakers Classic","bucket":"gym","tags":["strength"],"default_location":"Gymnasium","default_duration_min":60},
+
+    {"id":"bodypump","name":"BODYPUMP","bucket":"gym","tags":["strength"],"default_location":"Group Exercise Studio","default_duration_min":60},
+    {"id":"bodybalance","name":"BODYBALANCE","bucket":"gym","tags":["mind_body"],"default_location":"Gymnasium","default_duration_min":46},
+    {"id":"zumba_gold","name":"Zumba Gold","bucket":"gym","tags":["cardio"],"default_location":"Group Exercise Studio","default_duration_min":60},
+    {"id":"zumba","name":"Zumba","bucket":"gym","tags":["cardio"],"default_location":"Group Exercise Studio","default_duration_min":60},
+    {"id":"bodycombat","name":"BODYCOMBAT","bucket":"gym","tags":["cardio"],"default_location":"Group Exercise Studio","default_duration_min":60},
+    {"id":"cycling","name":"Cycling","bucket":"gym","tags":["cardio"],"default_location":"Cycling Room","default_duration_min":45},
+
+    {"id":"open_gym","name":"Open Gym","bucket":"sports","tags":["sports"],"default_location":"Gymnasium","default_duration_min":75},
+    {"id":"pickup_basketball","name":"Adult Pick Up Basketball","bucket":"sports","tags":["sports"],"default_location":"Gymnasium","default_duration_min":180},
+    {"id":"racquetball","name":"Racquetball","bucket":"sports","tags":["sports"],"default_location":"Racquetball","default_duration_min":60},
+    {"id":"youth_sports","name":"Youth Sports","bucket":"sports","tags":["sports"],"default_location":"Gymnasium","default_duration_min":270},
+
+    {"id":"kids_club","name":"Kids Club","bucket":"kids","tags":["kids_club"],"default_location":"Kids Club","default_duration_min":240}
+  ]
+}
