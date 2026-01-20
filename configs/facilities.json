@@ -1,0 +1,11 @@
+{
+  "branches": [
+    {"id":"blue_ash","name":"Blue Ash YMCA","aliases":["Blue Ash"]},
+    {"id":"campbell_county","name":"Campbell County YMCA","aliases":["Campbell County"]},
+    {"id":"central_parkway","name":"Central Parkway YMCA","aliases":["Central Parkway","CP"]},
+    {"id":"clermont_family","name":"Clermont Family YMCA","aliases":["Clermont"]},
+    {"id":"clippard_family","name":"Clippard Family YMCA","aliases":["Clippard"]},
+    {"id":"gamble_nippert","name":"Gamble-Nippert YMCA","aliases":["Gamble Nippert","Nippert"]},
+    {"id":"highland_county","name":"Highland County YMCA","aliases":["Highland County"]}
+  ]
+}

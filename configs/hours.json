@@ -1,0 +1,16 @@
+{
+  "timezone": "America/New_York",
+  "default_hours": {
+    "mon": ["07:00", "21:00"],
+    "tue": ["07:00", "21:00"],
+    "wed": ["07:00", "21:00"],
+    "thu": ["07:00", "21:00"],
+    "fri": ["07:00", "21:00"],
+    "sat": ["07:00", "21:00"],
+    "sun": null
+  },
+  "sunday_override": {
+    "open_branch_id": "central_parkway",
+    "hours": ["07:00", "21:00"]
+  }
+}
