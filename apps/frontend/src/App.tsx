@@ -5,12 +5,13 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 
 import "./App.css";
-import { fetchBranches, fetchCalendar, fetchSession, enroll } from "./lib/api";
-import type { Branch, CalendarEvent, SessionDetail } from "./lib/api";
+import { fetchBranches, fetchCalendar, fetchSession, enroll, chat } from "./lib/api";
+import { speakText, startSpeechToText } from "./lib/voice";
+import type { Branch, CalendarEvent, SessionDetail, ChatResponse } from "./lib/api";
 
-function iso(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
+const OLIVIA_GREETING = "This is Olivia with the YMCA! How may I help you?";
+
+function iso(d: Date) { return d.toISOString().slice(0, 10); }
 function startOfWeek(d: Date) {
   const x = new Date(d);
   const day = x.getDay(); // 0=sun
@@ -28,33 +29,40 @@ const BUCKETS = [
   { id: "run", label: "Run" }
 ] as const;
 
+type ChatMsg = { role: "user" | "assistant"; text: string };
+
 export default function App() {
+  const [userType, setUserType] = useState<"member" | "front_desk">("member");
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
-  const [selectedBuckets, setSelectedBuckets] = useState<string[]>(["swim","gym"]);
+  const [selectedBuckets, setSelectedBuckets] = useState<string[]>(["swim", "gym"]);
   const [onlyHasSpots, setOnlyHasSpots] = useState(false);
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [activeStart, setActiveStart] = useState<string>(() => iso(startOfWeek(new Date())));
   const [activeEnd, setActiveEnd] = useState<string>(() => {
     const s = startOfWeek(new Date());
-    const e = new Date(s);
-    e.setDate(e.getDate() + 6);
+    const e = new Date(s); e.setDate(e.getDate() + 6);
     return iso(e);
   });
 
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [selectedSession, setSelectedSession] = useState<SessionDetail | null>(null);
   const [enrollMsg, setEnrollMsg] = useState<string>("");
+  const [toastMsg, setToastMsg] = useState<string>("");
 
-  useEffect(() => {
-    fetchBranches().then(setBranches).catch(console.error);
-  }, []);
+  const [chatSessionId] = useState(() => (globalThis.crypto?.randomUUID?.() ?? `sess_${Date.now()}`));
+  const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([
+    { role: "assistant", text: "Try: “What’s HIIT availability this week at my Y?”" }
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [lastChat, setLastChat] = useState<ChatResponse | null>(null);
+
+  useEffect(() => { fetchBranches().then(setBranches).catch(console.error); }, []);
 
   async function loadCalendar(start: string, end: string) {
     const ev = await fetchCalendar({
-      start,
-      end,
+      start, end,
       branchIds: selectedBranchIds.length ? selectedBranchIds : undefined,
       buckets: selectedBuckets.length ? selectedBuckets : undefined,
       hasSpots: onlyHasSpots
@@ -62,24 +70,20 @@ export default function App() {
     setEvents(ev);
   }
 
-  useEffect(() => {
-    loadCalendar(activeStart, activeEnd).catch(console.error);
-  }, [activeStart, activeEnd, selectedBranchIds, selectedBuckets, onlyHasSpots]);
+  useEffect(() => { loadCalendar(activeStart, activeEnd).catch(console.error); },
+    [activeStart, activeEnd, selectedBranchIds, selectedBuckets, onlyHasSpots]
+  );
 
   useEffect(() => {
-    if (!selectedSessionId) {
-      setSelectedSession(null);
-      return;
-    }
+    if (!selectedSessionId) { setSelectedSession(null); return; }
     setEnrollMsg("");
-    fetchSession(selectedSessionId).then(setSelectedSession).catch((e) => {
-      console.error(e);
-      setSelectedSession(null);
-    });
+    fetchSession(selectedSessionId).then(setSelectedSession).catch((e) => { console.error(e); setSelectedSession(null); });
   }, [selectedSessionId]);
 
   const branchMap = useMemo(() => new Map(branches.map(b => [b.id, b])), [branches]);
 
+
+  const [voiceOn, setVoiceOn] = useState(false);
   function toggleBranch(id: string) {
     setSelectedBranchIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   }
@@ -87,24 +91,79 @@ export default function App() {
     setSelectedBuckets(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   }
 
-  async function doEnroll() {
-    if (!selectedSession) return;
+  function pushToast(msg: string) {
+    setToastMsg(msg);
+    window.setTimeout(() => setToastMsg(""), 2500);
+  }
+
+  async function doEnrollSessionId(sessionId: string) {
     try {
-      const res = await enroll(selectedSession.session_id, "demo_member");
-      if (res.already_enrolled) setEnrollMsg("✅ You’re already enrolled.");
-      else setEnrollMsg("✅ Enrolled! (synthetic)");
-      // refresh details + calendar so color/open-spots update
-      const fresh = await fetchSession(selectedSession.session_id);
+      const res = await enroll(sessionId, "demo_member");
+      setEnrollMsg(res.already_enrolled ? "✅ You’re already enrolled." : "✅ Enrolled! (synthetic)");
+      pushToast(res.already_enrolled ? "✅ You’re already enrolled." : "✅ Enrolled!");
+      const fresh = await fetchSession(sessionId);
       setSelectedSession(fresh);
       await loadCalendar(activeStart, activeEnd);
     } catch (e: any) {
       const msg = e?.response?.data?.detail ?? e?.message ?? "Enroll failed";
       setEnrollMsg(`❌ ${msg}`);
+      pushToast(`❌ ${msg}`);
+    }
+  }
+
+  async function sendChat(text: string) {
+    const t = text.trim();
+    if (!t) return;
+
+    setChatMsgs(prev => [...prev, { role: "user", text: t }]);
+    setChatInput("");
+
+    const ui = {
+      selected_branch_ids: selectedBranchIds,
+      selected_buckets: selectedBuckets,
+      only_has_spots: onlyHasSpots,
+      member_id: "demo_member",
+      user_group: userType,
+    };
+
+    try {
+      const res = await chat(chatSessionId, t, ui);
+      setLastChat(res);
+      setChatMsgs(prev => {
+        let msg = (res.assistant_message ?? "");
+        if (prev.length && prev[0].role === "assistant" && prev[0].text === OLIVIA_GREETING && msg.startsWith(OLIVIA_GREETING)) {
+          msg = msg.slice(OLIVIA_GREETING.length).replace(/^(\s*\n\s*)+/, "");
+        }
+        if (!msg.trim()) msg = OLIVIA_GREETING;
+        return [...prev, { role: "assistant", text: msg }];
+      });
+
+      // if chat enrolled, refresh calendar + details if possible
+      if (res.enroll_result?.session_id) {
+        pushToast(res.assistant_message?.includes("Enrolled") ? res.assistant_message : "✅ Enrollment updated.");
+        await loadCalendar(activeStart, activeEnd);
+        setSelectedSessionId(res.enroll_result.session_id);
+      }
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail ?? e?.message ?? "Chat failed";
+      setChatMsgs(prev => [...prev, { role: "assistant", text: `❌ ${msg}` }]);
     }
   }
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", height: "100vh" }}>
+      {/* TOP: User type selector */}
+      <div style={{ position: "absolute", top: 10, left: 10, zIndex: 100, display: "flex", gap: 12, alignItems: "center", background: "rgba(0,0,0,0.3)", padding: "8px 16px", borderRadius: 8 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+          <input type="radio" name="userType" value="member" checked={userType === "member"} onChange={() => setUserType("member")} />
+          Member
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+          <input type="radio" name="userType" value="front_desk" checked={userType === "front_desk"} onChange={() => setUserType("front_desk")} />
+          Front Desk
+        </label>
+      </div>
+
       {/* LEFT: master calendar */}
       <div style={{ padding: 18, borderRight: "1px solid rgba(255,255,255,0.12)" }}>
         <h2 style={{ margin: 0 }}>Master Calendar</h2>
@@ -132,11 +191,7 @@ export default function App() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 6, marginTop: 8 }}>
               {branches.map(b => (
                 <label key={b.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedBranchIds.includes(b.id)}
-                    onChange={() => toggleBranch(b.id)}
-                  />
+                  <input type="checkbox" checked={selectedBranchIds.includes(b.id)} onChange={() => toggleBranch(b.id)} />
                   {b.name}
                 </label>
               ))}
@@ -163,8 +218,7 @@ export default function App() {
           events={events as any}
           datesSet={(arg) => {
             const s = iso(arg.start);
-            const e = new Date(arg.end);
-            e.setDate(e.getDate() - 1);
+            const e = new Date(arg.end); e.setDate(e.getDate() - 1);
             setActiveStart(s);
             setActiveEnd(iso(e));
           }}
@@ -183,7 +237,6 @@ export default function App() {
             const remaining = Number(p.remaining ?? 0);
             const cap = Number(p.capacity ?? 0);
             const openText = remaining <= 0 ? "FULL" : `${remaining} of ${cap} open`;
-
             const branchName = (branchMap.get(p.branch_id)?.name ?? p.branch_name ?? "").replace(" YMCA","");
 
             return (
@@ -205,45 +258,106 @@ export default function App() {
         />
       </div>
 
-      {/* RIGHT: details + enroll */}
-      <div style={{ padding: 18 }}>
-        <h2 style={{ margin: 0 }}>Details</h2>
-        <div style={{ opacity: 0.7, marginTop: 6, marginBottom: 12 }}>
-          Click a class on the calendar to view details and enroll.
+      {/* RIGHT: details + chat */}
+      <div style={{ padding: 18, display: "grid", gridTemplateRows: "auto 1fr", gap: 14, height: "100vh" }}>
+        <div>
+          <h2 style={{ margin: 0 }}>Details</h2>
+          <div style={{ opacity: 0.7, marginTop: 6, marginBottom: 12 }}>
+            Click a class to view details and enroll.
+          </div>
+
+          {!selectedSession && <div style={{ opacity: 0.75 }}>No class selected.</div>}
+
+          {selectedSession && (
+            <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: 14 }}>
+              <div style={{ fontSize: 18, fontWeight: 800 }}>{selectedSession.class_name}</div>
+              <div style={{ opacity: 0.85, marginTop: 6 }}>{selectedSession.branch_name}</div>
+              <div style={{ opacity: 0.85 }}>{selectedSession.location} · {selectedSession.instructor}</div>
+              <div style={{ opacity: 0.85, marginTop: 6 }}>
+                {new Date(selectedSession.start_time).toLocaleString()} → {new Date(selectedSession.end_time).toLocaleTimeString()}
+              </div>
+
+              <div style={{ marginTop: 10, opacity: 0.9 }}>
+                Capacity: {selectedSession.capacity} · Enrolled: {selectedSession.enrolled} · Remaining: {selectedSession.remaining}
+              </div>
+
+              <button
+                onClick={() => doEnrollSessionId(selectedSession.session_id)}
+                disabled={selectedSession.remaining <= 0}
+                style={{ marginTop: 12, padding: "10px 12px", borderRadius: 10, cursor: "pointer" }}
+              >
+                {selectedSession.remaining <= 0 ? "Class Full" : "Enroll (synthetic)"}
+              </button>
+
+              {enrollMsg && <div style={{ marginTop: 10 }}>{enrollMsg}</div>}
+            </div>
+          )}
         </div>
 
-        {!selectedSession && (
-          <div style={{ opacity: 0.75 }}>No class selected.</div>
-        )}
+        <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: 14, overflow: "auto" }}>
+          <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>Chat</div>
 
-        {selectedSession && (
-          <div style={{
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 14,
-            padding: 14
-          }}>
-            <div style={{ fontSize: 18, fontWeight: 800 }}>{selectedSession.class_name}</div>
-            <div style={{ opacity: 0.85, marginTop: 6 }}>{selectedSession.branch_name}</div>
-            <div style={{ opacity: 0.85 }}>{selectedSession.location} · {selectedSession.instructor}</div>
-            <div style={{ opacity: 0.85, marginTop: 6 }}>
-              {new Date(selectedSession.start_time).toLocaleString()} → {new Date(selectedSession.end_time).toLocaleTimeString()}
-            </div>
+            {toastMsg && (
+              <div style={{ marginBottom: 10, padding: "8px 10px", borderRadius: 10, background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.10)" }}>
+                {toastMsg}
+              </div>
+            )}
 
-            <div style={{ marginTop: 10, opacity: 0.9 }}>
-              Capacity: {selectedSession.capacity} · Enrolled: {selectedSession.enrolled} · Remaining: {selectedSession.remaining}
-            </div>
 
-            <button
-              onClick={doEnroll}
-              disabled={selectedSession.remaining <= 0}
-              style={{ marginTop: 12, padding: "10px 12px", borderRadius: 10, cursor: "pointer" }}
-            >
-              {selectedSession.remaining <= 0 ? "Class Full" : "Enroll (synthetic)"}
-            </button>
-
-            {enrollMsg && <div style={{ marginTop: 10 }}>{enrollMsg}</div>}
+          <div style={{ display: "grid", gap: 10 }}>
+            {chatMsgs.map((m, i) => (
+              <div key={i} style={{
+                justifySelf: m.role === "user" ? "end" : "start",
+                maxWidth: "90%",
+                padding: "10px 12px",
+                borderRadius: 12,
+                background: m.role === "user" ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.20)",
+                whiteSpace: "pre-wrap"
+              }}>
+                {m.text}
+              </div>
+            ))}
           </div>
-        )}
+
+          {lastChat?.suggested_sessions?.length ? (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>Suggested sessions</div>
+              <div style={{ display: "grid", gap: 8 }}>
+                {lastChat.suggested_sessions.slice(0, 6).map((s: any, idx: number) => (
+                  <div key={s.session_id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)" }}>
+                    <div style={{ fontWeight: 700 }}>{idx + 1}) {s.class_name}</div>
+                    <div style={{ opacity: 0.85 }}>{new Date(s.start_time).toLocaleString()} · {s.branch_name}</div>
+                    <div style={{ opacity: 0.85 }}>{s.remaining} of {s.capacity} open</div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                      <button onClick={() => setSelectedSessionId(s.session_id)} style={{ padding: "8px 10px", borderRadius: 10, cursor: "pointer" }}>
+                        Select
+                      </button>
+                      <button onClick={() => doEnrollSessionId(s.session_id)} style={{ padding: "8px 10px", borderRadius: 10, cursor: "pointer" }}>
+                        Enroll
+                      </button>
+                      <button onClick={() => sendChat(`Sign me up for option ${idx + 1}`)} style={{ padding: "8px 10px", borderRadius: 10, cursor: "pointer" }}>
+                        Enroll option {idx + 1}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <input
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(chatInput); } }}
+              placeholder='Ask: "What’s HIIT availability this week at my Y?"'
+              style={{ flex: 1, padding: "10px 12px", borderRadius: 10 }}
+            />
+            <button onClick={() => sendChat(chatInput)} style={{ padding: "10px 12px", borderRadius: 10, cursor: "pointer" }}>
+              Send
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,0 +1,37 @@
+{
+  "blue_ash": [
+    {"branch_id": "central_parkway", "minutes": 15},
+    {"branch_id": "clippard_family", "minutes": 18},
+    {"branch_id": "gamble_nippert", "minutes": 20}
+  ],
+  "campbell_county": [
+    {"branch_id": "central_parkway", "minutes": 12},
+    {"branch_id": "clippard_family", "minutes": 14},
+    {"branch_id": "blue_ash", "minutes": 22}
+  ],
+  "central_parkway": [
+    {"branch_id": "campbell_county", "minutes": 12},
+    {"branch_id": "clippard_family", "minutes": 10},
+    {"branch_id": "gamble_nippert", "minutes": 16}
+  ],
+  "clermont_family": [
+    {"branch_id": "blue_ash", "minutes": 25},
+    {"branch_id": "clippard_family", "minutes": 22},
+    {"branch_id": "central_parkway", "minutes": 24}
+  ],
+  "clippard_family": [
+    {"branch_id": "central_parkway", "minutes": 10},
+    {"branch_id": "campbell_county", "minutes": 14},
+    {"branch_id": "blue_ash", "minutes": 18}
+  ],
+  "gamble_nippert": [
+    {"branch_id": "central_parkway", "minutes": 16},
+    {"branch_id": "blue_ash", "minutes": 20},
+    {"branch_id": "clippard_family", "minutes": 18}
+  ],
+  "highland_county": [
+    {"branch_id": "clermont_family", "minutes": 28},
+    {"branch_id": "blue_ash", "minutes": 55},
+    {"branch_id": "central_parkway", "minutes": 58}
+  ]
+}

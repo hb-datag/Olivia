@@ -18,3 +18,13 @@ dist/
 data/*.db
 data/*.sqlite
 data/*.sqlite3
+
+# local db
+/apps/backend/data/*.db
+/apps/backend/data/*.sqlite*
+
+# Local artifacts
+apps/backend/data/*.db
+apps/backend/app/**/*.bak*
+apps/frontend/src/**/*.bak*
+*.bak.*

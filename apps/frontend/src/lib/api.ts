@@ -43,6 +43,22 @@ export type SessionDetail = {
   availability_color: "green" | "amber" | "red";
 };
 
+export type ChatUIContext = {
+  selected_branch_ids: string[];
+  selected_buckets: string[];
+  only_has_spots: boolean;
+  member_id: string;
+  user_group?: "member" | "front_desk";
+};
+
+export type ChatResponse = {
+  assistant_message: string;
+  follow_up_question?: string | null;
+  intent_name: string;
+  suggested_sessions?: any[];
+  enroll_result?: any;
+};
+
 const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 
 export async function fetchBranches(): Promise<Branch[]> {
@@ -76,4 +92,9 @@ export async function fetchSession(sessionId: string): Promise<SessionDetail> {
 export async function enroll(sessionId: string, memberId = "demo_member"): Promise<any> {
   const res = await axios.post(`${API_BASE}/api/v1/enroll`, { session_id: sessionId, member_id: memberId });
   return res.data;
+}
+
+export async function chat(sessionId: string, message: string, ui: ChatUIContext): Promise<ChatResponse> {
+  const res = await axios.post(`${API_BASE}/api/v1/chat`, { session_id: sessionId, message, ui_context: ui });
+  return res.data as ChatResponse;
 }
