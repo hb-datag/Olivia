@@ -1314,6 +1314,14 @@ def chat(req: ChatRequest):
         ui_only = getattr(req.ui_context, "only_has_spots", None)
         if ui_only is not None:
             has_spots = bool(ui_only)
+        
+        # Check if user is asking for full/no-spots classes
+        msg_lower = req.message.lower()
+        if any(word in msg_lower for word in ["full", "no spots", "nospots", "at capacity", "booked", "packed"]):
+            has_spots = False
+        elif any(word in msg_lower for word in ["available", "open", "spots available", "with spots"]):
+            has_spots = True
+        
         limit = int(p.get("limit", 5))
 
         if branch_ids is None and "my y" in req.message.lower():
@@ -1336,6 +1344,15 @@ def chat(req: ChatRequest):
             return ChatResponse(assistant_message=q, follow_up_question=q)
 
         suggested, search_meta = _search_sessions_with_fallback(date_start, date_end, branch_ids, buckets, tags, has_spots, limit, branches)
+
+        # Post-filter for specific intents (e.g., "full" classes, "available" classes)
+        msg_lower = req.message.lower()
+        if any(word in msg_lower for word in ["full", "no spots", "nospots", "at capacity", "booked", "packed"]):
+            # Only show classes with no remaining spots
+            suggested = [s for s in suggested if s.get("remaining", 0) == 0]
+        elif any(word in msg_lower for word in ["available", "open", "spots available", "with spots"]):
+            # Only show classes with remaining spots
+            suggested = [s for s in suggested if s.get("remaining", 0) > 0]
 
         LAST_SUGGESTIONS[req.session_id] = [
             {"option": i + 1, "session_id": s["session_id"], "label": f'{s["class_name"]} @ {s["branch_name"]} {s["start_time"]}'}
