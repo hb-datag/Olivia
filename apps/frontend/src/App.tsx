@@ -151,7 +151,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", height: "100vh" }}>
+    <div style={{ display: "grid", gridTemplateRows: "1fr 0.8fr", height: "100vh" }}>
       {/* TOP: User type selector */}
       <div style={{ position: "absolute", top: 10, left: 10, zIndex: 100, display: "flex", gap: 12, alignItems: "center", background: "rgba(0,0,0,0.3)", padding: "8px 16px", borderRadius: 8 }}>
         <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
@@ -164,8 +164,8 @@ export default function App() {
         </label>
       </div>
 
-      {/* LEFT: master calendar */}
-      <div style={{ padding: 18, borderRight: "1px solid rgba(255,255,255,0.12)" }}>
+      {/* TOP: master calendar */}
+      <div style={{ padding: 18, borderBottom: "1px solid rgba(255,255,255,0.12)", overflow: "auto" }}>
         <h2 style={{ margin: 0 }}>Master Calendar</h2>
         <div style={{ opacity: 0.7, marginTop: 6, marginBottom: 12 }}>
           All branches aggregated. Filters narrow what’s shown.
@@ -212,7 +212,7 @@ export default function App() {
         <FullCalendar
           plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
           initialView="timeGridWeek"
-          height="calc(100vh - 190px)"
+          height="350px"
           nowIndicator
           allDaySlot={false}
           events={events as any}
@@ -258,8 +258,8 @@ export default function App() {
         />
       </div>
 
-      {/* RIGHT: details + chat */}
-      <div style={{ padding: 18, display: "grid", gridTemplateRows: "auto 1fr", gap: 14, height: "100vh" }}>
+      {/* BOTTOM: details + chat */}
+      <div style={{ padding: 18, display: "grid", gridTemplateRows: "auto 1fr", gap: 14, overflow: "auto" }}>
         <div>
           <h2 style={{ margin: 0 }}>Details</h2>
           <div style={{ opacity: 0.7, marginTop: 6, marginBottom: 12 }}>
