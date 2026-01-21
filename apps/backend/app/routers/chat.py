@@ -27,8 +27,8 @@ from ..calendar_store import conn, availability_color
 from ..llm import ollama_chat_json
 
 TZ = ZoneInfo("America/New_York")
-REPO_ROOT = Path(__file__).resolve().parents[4]  # .../Olivia
-CONFIGS = REPO_ROOT / "configs"
+REPO_ROOT = Path(__file__).resolve().parents[2]  # /app (Docker) or ~/Olivia/apps/backend (local)
+CONFIGS = Path(__file__).resolve().parents[2] / "configs" if (Path(__file__).resolve().parents[2] / "configs").exists() else Path(__file__).resolve().parents[4] / "configs"
 FACILITIES_PATH = CONFIGS / "facilities.json"
 
 router = APIRouter()

@@ -9,7 +9,7 @@ TZ = ZoneInfo("America/New_York")
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]         # .../apps/backend
 DB_PATH = BACKEND_DIR / "data" / "olivia.db"
-CONFIG_DIR = BACKEND_DIR.parents[1] / "configs"           # .../Olivia/configs
+CONFIG_DIR = BACKEND_DIR.parent / "configs"               # .../Olivia/configs
 
 FACILITIES_PATH = CONFIG_DIR / "facilities.json"
 CATALOG_PATH = CONFIG_DIR / "class_catalog.json"

@@ -8,6 +8,8 @@ services:
     container_name: olivia_backend
     ports:
       - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - OLIVIA_OLLAMA_URL=http://host.docker.internal:11434
       - OLIVIA_OLLAMA_MODEL=llama3.2:3b
@@ -20,8 +22,6 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - olivia-network
-    depends_on:
-      - ollama
 
   frontend:
     build:
@@ -38,31 +38,6 @@ services:
     command: npm run dev -- --host 0.0.0.0
     networks:
       - olivia-network
-    depends_on:
-      - backend
-
-  ollama:
-    image: ollama/ollama:latest
-    container_name: olivia_ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - olivia-network
-    environment:
-      - OLLAMA_HOST=0.0.0.0:11434
-    # Optional: uncomment to use GPU (requires nvidia-docker)
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
-
-volumes:
-  ollama_data:
 
 networks:
   olivia-network:

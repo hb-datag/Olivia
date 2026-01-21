@@ -6,8 +6,8 @@ from fastapi import APIRouter, Query
 
 router = APIRouter()
 
-ROOT_DIR = Path(__file__).resolve().parents[4]   # ~/Olivia
-CONFIG_DIR = ROOT_DIR / "configs"
+ROOT_DIR = Path(__file__).resolve().parents[2]   # /app (Docker) or ~/Olivia/apps/backend (local)
+CONFIG_DIR = Path(__file__).resolve().parents[2] / "configs" if (Path(__file__).resolve().parents[2] / "configs").exists() else Path(__file__).resolve().parents[4] / "configs"
 HOURS_PATH = CONFIG_DIR / "hours.json"
 
 TZ = ZoneInfo("America/New_York")

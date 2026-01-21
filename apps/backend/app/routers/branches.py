@@ -4,8 +4,8 @@ from fastapi import APIRouter
 
 router = APIRouter()
 
-ROOT_DIR = Path(__file__).resolve().parents[4]   # ~/Olivia
-CONFIG_DIR = ROOT_DIR / "configs"
+ROOT_DIR = Path(__file__).resolve().parents[2]   # /app (Docker) or ~/Olivia/apps/backend (local)
+CONFIG_DIR = Path(__file__).resolve().parents[2] / "configs" if (Path(__file__).resolve().parents[2] / "configs").exists() else Path(__file__).resolve().parents[4] / "configs"
 FACILITIES_PATH = CONFIG_DIR / "facilities.json"
 
 @router.get("/branches")
