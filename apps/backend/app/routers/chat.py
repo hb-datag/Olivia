@@ -12,10 +12,16 @@ BUCKET_ALIASES = {
     "kids_club": "kids",
     "kidsclub": "kids",
     "childcare": "kids",
+    "daycare": "kids",
     "kids": "kids",
     "swim": "swim",
+    "swimming": "swim",
     "sports": "sports",
     "gym": "gym",
+    "run": "run",
+    "running": "run",
+    "run_club": "run",
+    "runclub": "run",
 }
 
 
@@ -114,6 +120,17 @@ def _normalize_bucket_ids(buckets: Optional[List[str]]) -> Optional[List[str]]:
         k = str(b).strip().lower()
         out.append(_BUCKET_ALIASES.get(k, k))
     return out or None
+
+def _extract_buckets_from_message(message: Optional[str]) -> Optional[List[str]]:
+    """Extract bucket keywords from user message using aliases."""
+    if not message:
+        return None
+    msg = message.lower()
+    extracted: set = set()
+    for alias, bucket in BUCKET_ALIASES.items():
+        if alias in msg:
+            extracted.add(bucket)
+    return list(extracted) if extracted else None
 
 def _match_branch_id_from_text(branches: List[Dict[str, Any]], message: Optional[str]) -> Optional[str]:
     if not message:
@@ -1275,10 +1292,22 @@ def chat(req: ChatRequest):
             # apply defaults if still unset
             if not branch_ids:
                 branch_ids = _default_branch_ids(req) or None
+        
+        # For buckets: prioritize extracted message buckets, then LLM parsed, then UI selection
+        msg_buckets = _extract_buckets_from_message(req.message)
+        lm_buckets = p.get("buckets")
         ui_buckets = req.ui_context.selected_buckets or None
-        buckets = ui_buckets if ui_buckets else (p.get("buckets") or None)
-        if buckets is None:
-            buckets = req.ui_context.selected_buckets or None
+        
+        # Use extracted message buckets if found, otherwise LLM, then UI
+        if msg_buckets:
+            buckets = msg_buckets
+        elif lm_buckets:
+            buckets = lm_buckets
+        elif ui_buckets:
+            buckets = ui_buckets
+        else:
+            buckets = None
+        if buckets:
             buckets = _normalize_bucket_ids(buckets)
         tags = p.get("tags")
         has_spots = bool(p.get("has_spots", True))
